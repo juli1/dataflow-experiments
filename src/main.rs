@@ -5,6 +5,7 @@ use std::process::exit;
 use tree_sitter::{Node, Parser};
 use anyhow::Result;
 use derive_builder::Builder;
+use crate::dataflow::java::build_graph;
 
 const SOURCE_QUERY: &str = r#"(method_declaration
     name: (identifier) @name
@@ -57,13 +58,15 @@ fn get_query_nodes<'tree>(tree: &'tree tree_sitter::Tree, query: &tree_sitter::Q
 }
 
 fn main() {
-    let args = std::env::args().collect::<Vec<String>>();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <filename>", args[0]);
-        std::process::exit(1);
-    }
-
-    let filename = &args[1];
+    // let args = std::env::args().collect::<Vec<String>>();
+    // if args.len() != 2 {
+    //     eprintln!("Usage: {} <filename>", args[0]);
+    //     std::process::exit(1);
+    // }
+    //
+    // let filename = &args[1];
+    //
+    let filename = "testdata/sqli/Test1.java".to_string();
 
     // read filename into a string
     let source_code = std::fs::read_to_string(filename).expect("error while reading file");
@@ -72,8 +75,11 @@ fn main() {
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_java::language()).expect("error while loading Java language");
     let tree = parser.parse(&source_code, None).expect("error while parsing source code");
+    let code_str = source_code.as_str();
+    build_graph(&tree, code_str);
+    
     let source_query = get_query(SOURCE_QUERY, &tree_sitter_java::language()).expect("get source query");
-    let nodes = get_query_nodes(&tree, &source_query, &source_code.as_str());
+    let nodes = get_query_nodes(&tree, &source_query, code_str);
 
     if nodes.len() == 0 {
         println!("no node");
