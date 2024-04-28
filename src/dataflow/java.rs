@@ -1,14 +1,13 @@
+use crate::dataflow::common::{contains_identifier, get_code_for_node};
 use std::collections::HashMap;
 use tree_sitter;
 use tree_sitter::{Tree, TreeCursor};
-use crate::dataflow::common::{contains_identifier, get_code_for_node};
 
 pub struct DataflowNode<'node> {
     pub node: tree_sitter::Node<'node>,
 }
 
-
-pub struct DataflowMap{
+pub struct DataflowMap {
     pub map: HashMap<String, DataflowMap>,
 }
 
@@ -32,13 +31,13 @@ fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkConte
         }
 
         let left_identifier = get_code_for_node(&left, context.code);
-        let contains = contains_identifier(&right_opt.unwrap(), &"request".to_string(), context.code);
+        let contains =
+            contains_identifier(&right_opt.unwrap(), &"request".to_string(), context.code);
 
         if contains {
             println!("assignment in {}", left_identifier);
         }
     }
-
 
     let mut cursor = node.walk();
     let children = node.children(&mut cursor);
@@ -50,9 +49,10 @@ fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkConte
     }
 }
 
-
 fn walk_method_declaration(node: &tree_sitter::Node, context: &WalkContext) {
-    let method_name_opt = node.child_by_field_name("name").map(|n| get_code_for_node(&n, context.code));
+    let method_name_opt = node
+        .child_by_field_name("name")
+        .map(|n| get_code_for_node(&n, context.code));
 
     if method_name_opt.is_none() {
         return;
@@ -71,7 +71,10 @@ fn walk_method_declaration(node: &tree_sitter::Node, context: &WalkContext) {
                     let name_opt = child.child_by_field_name("name");
                     if let Some(name) = name_opt {
                         let parameter_name = get_code_for_node(&name, context.code);
-                        println!("method: {}, parameter name: {}", method_name, parameter_name);
+                        println!(
+                            "method: {}, parameter name: {}",
+                            method_name, parameter_name
+                        );
                     }
                 }
 
@@ -85,7 +88,6 @@ fn walk_method_declaration(node: &tree_sitter::Node, context: &WalkContext) {
 }
 
 fn walk_node_class(node: &tree_sitter::Node, context: &WalkContext) {
-
     if node.grammar_name() == "method_declaration" {
         return walk_method_declaration(node, context);
     }
@@ -115,14 +117,7 @@ pub fn walk_node(node: &tree_sitter::Node, context: &WalkContext) {
     }
 }
 
-pub fn build_graph(tree: &Tree, code: &str){
-    let context = WalkContext{
-        code,
-    };
+pub fn build_graph(tree: &Tree, code: &str) {
+    let context = WalkContext { code };
     walk_node(&tree.root_node(), &context);
-}
-
-
-pub fn foo() {
-    println!("Hello, world!");
 }
