@@ -19,7 +19,12 @@ struct WalkContext<'a> {
     code: &'a str,
 }
 
-fn walk_method_declaration_content<'a, 'b>(node: &'a tree_sitter::Node, method_container: &'b mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
+
+fn add_flow(source: String, dest: String, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
+    println!("attempt adding flow from {} to {} in container {}", source, dest, container.name.clone().unwrap_or("no name".to_string()))
+}
+
+fn walk_method_declaration_content(node: &tree_sitter::Node, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
     if node.grammar_name() == "assignment_expression" {
         let left_opt = node.child_by_field_name("left");
         let right_opt = node.child_by_field_name("right");
@@ -40,7 +45,7 @@ fn walk_method_declaration_content<'a, 'b>(node: &'a tree_sitter::Node, method_c
                 outbound: vec![],
                 ts_node: None,
             };
-            method_container.nodes.push(Arc::new(param_node));
+            container.nodes.push(Arc::new(param_node));
         }
     }
 
@@ -48,7 +53,8 @@ fn walk_method_declaration_content<'a, 'b>(node: &'a tree_sitter::Node, method_c
     let children = node.children(&mut cursor);
     for child in children {
         if child.is_named() {
-            walk_method_declaration_content(&child, method_container, dataflow, context);
+            // println!("[walk_method_declaration] type: {}", child.grammar_name());
+            walk_method_declaration_content(&child, container, dataflow, context);
         }
     }
 }
