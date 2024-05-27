@@ -6,6 +6,7 @@ use tree_sitter;
 
 const PRINT_INDENTATION: usize = 3;
 
+#[derive(Debug)]
 pub enum ContainerKind {
     CLASS,
     FUNCTION,
@@ -24,7 +25,7 @@ impl Container<'_> {
     pub fn print(&self, indent: Option<usize>) {
         let name = self.name.clone().unwrap_or("<no name>".to_string());
         let indent = indent.unwrap_or(0);
-        println!("{}[container] name={}", " ".repeat(indent), name);
+        println!("{}[container] name={} kind={:?}", " ".repeat(indent), name, self.kind);
 
         for c in &self.containers {
             c.print(Some(indent + PRINT_INDENTATION))
@@ -36,6 +37,7 @@ impl Container<'_> {
     }
 }
 
+#[derive(Debug)]
 pub enum NodeKind {
     PARAMETER,
     VARIABLE,
@@ -46,7 +48,7 @@ pub struct Node<'a> {
     pub kind: NodeKind,
     pub inbound: Vec<Arc<Node<'a>>>,
     pub outbound: Vec<Arc<Node<'a>>>,
-    pub ts_node: tree_sitter::Node<'a>,
+    pub ts_node: Option<Arc<tree_sitter::Node<'a>>>,
 }
 
 
@@ -54,7 +56,7 @@ impl Node<'_> {
     pub fn print(&self, indent: Option<usize>) {
         let name = self.name.clone().unwrap_or("<no name>".to_string());
         let indent = indent.unwrap_or(0);
-        println!("{}[node] name={}", " ".repeat(indent), name)
+        println!("{}[node] name={} kind={:?}", " ".repeat(indent), name, self.kind)
     }
 }
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 use tree_sitter;
 use tree_sitter::Tree;
 
-use crate::dataflow::common::{contains_identifier, get_code_for_node};
-use crate::dataflow::model::{Container, ContainerKind, DataFlow};
+use crate::dataflow::common::get_code_for_node;
+use crate::dataflow::model::{Container, ContainerKind, DataFlow, Node, NodeKind};
 
 pub struct DataflowNode<'node> {
     pub node: tree_sitter::Node<'node>,
@@ -19,7 +19,7 @@ struct WalkContext<'a> {
     code: &'a str,
 }
 
-fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkContext) {
+fn walk_method_declaration_content<'a, 'b>(node: &'a tree_sitter::Node, method_container: &'b mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
     if node.grammar_name() == "assignment_expression" {
         let left_opt = node.child_by_field_name("left");
         let right_opt = node.child_by_field_name("right");
@@ -30,16 +30,17 @@ fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkConte
 
         let left = left_opt.unwrap();
         println!("left type {}", left.grammar_name());
-        if left.grammar_name() != "identifier" {
-            return;
-        }
+        if left.grammar_name() == "identifier" {
+            let left_identifier = get_code_for_node(&left, context.code);
 
-        let left_identifier = get_code_for_node(&left, context.code);
-        let contains =
-            contains_identifier(&right_opt.unwrap(), &"request".to_string(), context.code);
-
-        if contains {
-            println!("assignment in {}", left_identifier);
+            let mut param_node = Node {
+                name: Some(left_identifier),
+                kind: NodeKind::VARIABLE,
+                inbound: vec![],
+                outbound: vec![],
+                ts_node: None,
+            };
+            method_container.nodes.push(Arc::new(param_node));
         }
     }
 
@@ -47,13 +48,27 @@ fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkConte
     let children = node.children(&mut cursor);
     for child in children {
         if child.is_named() {
-            // println!("[walk_method_declaration] type: {}", child.grammar_name());
-            walk_method_declaration_content(&child, context);
+            walk_method_declaration_content(&child, method_container, dataflow, context);
         }
     }
 }
 
-fn walk_method_declaration(node: &tree_sitter::Node, class_container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
+fn walk_parameter_declaration<'a, 'b>(node: &'a tree_sitter::Node, method_container: &'b mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
+    let name_opt = node.child_by_field_name("name");
+    if let Some(name) = name_opt {
+        let parameter_name = get_code_for_node(&name, context.code);
+        let mut param_node = Node {
+            name: Some(parameter_name),
+            kind: NodeKind::PARAMETER,
+            inbound: vec![],
+            outbound: vec![],
+            ts_node: None,
+        };
+        method_container.nodes.push(Arc::new(param_node));
+    }
+}
+
+fn walk_method_declaration<'a, 'b>(node: &'a tree_sitter::Node, class_container: &'b mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
     let method_name_opt = node
         .child_by_field_name("name")
         .map(|n| get_code_for_node(&n, context.code));
@@ -70,38 +85,38 @@ fn walk_method_declaration(node: &tree_sitter::Node, class_container: &mut Conta
         nodes_by_name: HashMap::new(),
     };
 
+
+    let parameters_opt = node.child_by_field_name("parameters");
+
+    if let Some(parameters) = parameters_opt {
+        let mut cursor = parameters.walk();
+        let children = parameters.children(&mut cursor);
+        for child in children {
+            if child.is_named() {
+                if child.grammar_name() == "formal_parameter" {
+                    walk_parameter_declaration(&child, &mut container, dataflow, context);
+                }
+            }
+        }
+    }
+
+    let bodyOption = node.child_by_field_name("body");
+    if let Some(body) = bodyOption {
+        let mut cursor = body.walk();
+        let children = body.children(&mut cursor);
+        for child in children {
+            walk_method_declaration_content(&child, &mut container, dataflow, context);
+        }
+    }
+
+
     class_container.containers.push(Arc::new(container));
 
-    // let method_name = method_name_opt.unwrap();
-    //
-    // let parameters_opt = node.child_by_field_name("parameters");
-    //
-    // if let Some(parameters) = parameters_opt {
-    //     let mut cursor = parameters.walk();
-    //     let children = parameters.children(&mut cursor);
-    //     for child in children {
-    //         if child.is_named() {
-    //             if child.grammar_name() == "formal_parameter" {
-    //                 let name_opt = child.child_by_field_name("name");
-    //                 if let Some(name) = name_opt {
-    //                     let parameter_name = get_code_for_node(&name, context.code);
-    //                     println!(
-    //                         "method: {}, parameter name: {}",
-    //                         method_name, parameter_name
-    //                     );
-    //                 }
-    //             }
-    //
-    //             // println!("[walk_method_declaration] type: {}", child.grammar_name());
-    //             walk_method_declaration(&child, context);
-    //         }
-    //     }
-    // }
 
     // walk_method_declaration_content(&node, context);
 }
 
-fn walk_node_class_body(node: &tree_sitter::Node, class_container: &mut Container, dataflow: &mut DataFlow, walk_context: &WalkContext) {
+fn walk_node_class_body<'a, 'b>(node: &'a tree_sitter::Node, class_container: &'b mut Container, dataflow: &mut DataFlow, walk_context: &WalkContext) {
     let mut cursor = node.walk();
     let children = node.children(&mut cursor);
     for child in children {
@@ -115,7 +130,7 @@ fn walk_node_class_body(node: &tree_sitter::Node, class_container: &mut Containe
     }
 }
 
-fn walk_node_class(node: &tree_sitter::Node, dataflow: &mut DataFlow, context: &WalkContext) {
+fn walk_node_class<'a>(node: &'a tree_sitter::Node, dataflow: &mut DataFlow, context: &WalkContext) {
     let nameNode = node.child_by_field_name("name");
 
     if nameNode.is_none() {
@@ -143,7 +158,7 @@ fn walk_node_class(node: &tree_sitter::Node, dataflow: &mut DataFlow, context: &
     dataflow.containers.push(Arc::new(container));
 }
 
-pub fn walk_node(node: &tree_sitter::Node, dataflow: &mut DataFlow, context: &WalkContext) {
+pub fn walk_node<'a>(node: &'a tree_sitter::Node, dataflow: &mut DataFlow, context: &WalkContext) {
     // println!("[walk_node] node type: {}", node.grammar_name());
     if node.grammar_name() == "class_declaration" {
         return walk_node_class(node, dataflow, context);
@@ -159,7 +174,7 @@ pub fn walk_node(node: &tree_sitter::Node, dataflow: &mut DataFlow, context: &Wa
     }
 }
 
-pub fn build_graph(tree: &Tree, code: &str) {
+pub fn build_graph<'a>(tree: &'a Tree, code: &str) {
     let context = WalkContext { code };
     let mut dataflow = DataFlow {
         containers: vec![],
