@@ -19,7 +19,11 @@ struct WalkContext<'a> {
     code: &'a str,
 }
 
-fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkContext) {
+fn add_flow(source: String, dest: String, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
+    println!("attempt adding flow from {} to {} in container {}", source, dest, container.name.clone().unwrap_or("no name".to_string()))
+}
+
+fn walk_method_declaration_content(node: &tree_sitter::Node, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
     if node.grammar_name() == "assignment_expression" {
         let left_opt = node.child_by_field_name("left");
         let right_opt = node.child_by_field_name("right");
@@ -48,7 +52,7 @@ fn walk_method_declaration_content(node: &tree_sitter::Node, context: &WalkConte
     for child in children {
         if child.is_named() {
             // println!("[walk_method_declaration] type: {}", child.grammar_name());
-            walk_method_declaration_content(&child, context);
+            walk_method_declaration_content(&child, container, dataflow, context);
         }
     }
 }
