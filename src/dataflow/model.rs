@@ -19,6 +19,7 @@ pub struct Container<'a> {
     pub containers: Vec<Arc<Container<'a>>>,
     pub nodes: Vec<Arc<Node<'a>>>,
     pub nodes_by_name: HashMap<String, Arc<Node<'a>>>,
+    // pub parent: Option<Arc<Container<'a>>>,
 }
 
 impl Container<'_> {
@@ -49,6 +50,7 @@ pub struct Node<'a> {
     pub inbound: Vec<Arc<Node<'a>>>,
     pub outbound: Vec<Arc<Node<'a>>>,
     pub ts_node: Option<Arc<tree_sitter::Node<'a>>>,
+    // pub parent: Option<Arc<Container<'a>>>,
 }
 
 
@@ -56,7 +58,13 @@ impl Node<'_> {
     pub fn print(&self, indent: Option<usize>) {
         let name = self.name.clone().unwrap_or("<no name>".to_string());
         let indent = indent.unwrap_or(0);
-        println!("{}[node] name={} kind={:?}", " ".repeat(indent), name, self.kind)
+        println!("{}[node] name={} kind={:?}", " ".repeat(indent), name, self.kind);
+        for o in &self.inbound {
+            println!("{} <- name={} kind={:?}", " ".repeat(indent + PRINT_INDENTATION), o.name.clone().unwrap_or("no name".to_string()), self.kind)
+        }
+        for o in &self.outbound {
+            println!("{} -> name={} kind={:?}", " ".repeat(indent + PRINT_INDENTATION), o.name.clone().unwrap_or("no name".to_string()), self.kind)
+        }
     }
 }
 
@@ -69,7 +77,7 @@ pub struct DataFlow<'a> {
 impl DataFlow<'_> {
     pub fn print_graph(&self) {
         for c in self.containers.iter() {
-            &c.print(None);
+            c.print(None);
         }
     }
 }
