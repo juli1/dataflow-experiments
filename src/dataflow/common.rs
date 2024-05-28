@@ -1,6 +1,6 @@
 use tree_sitter;
 
-pub fn get_code_for_node<'a>(node: tree_sitter::Node, code: &'a str) -> String {
+pub fn get_code_for_node(node: tree_sitter::Node, code: &str) -> String {
     let slice = &code[node.start_byte()..node.end_byte()];
     slice.to_string()
 }

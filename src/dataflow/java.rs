@@ -33,7 +33,7 @@ fn add_flow(source: &String, dest: &String, container: &mut Container, dataflow:
 
 /// Returns all the assignment we need to get when there is a function call
 /// on the right hand side of an assignment
-pub fn get_identifiers_from_assignment<'a>(node: tree_sitter::Node<'a>) -> Vec<tree_sitter::Node<'a>> {
+pub fn get_identifiers_from_assignment(node: tree_sitter::Node) -> Vec<tree_sitter::Node> {
     let mut res: Vec<tree_sitter::Node> = vec![];
     if node.grammar_name() == "identifier" {
         res.push(node.clone());
