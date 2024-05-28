@@ -49,7 +49,7 @@ pub struct Node<'a> {
     pub kind: NodeKind,
     pub inbound: RwLock<Vec<Arc<Node<'a>>>>,
     pub outbound: RwLock<Vec<Arc<Node<'a>>>>,
-    pub ts_node: Option<Arc<tree_sitter::Node<'a>>>,
+    pub ts_node: Arc<tree_sitter::Node<'a>>,
     // pub parent: Option<Arc<Container<'a>>>,
 }
 

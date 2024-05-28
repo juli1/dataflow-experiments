@@ -88,7 +88,7 @@ fn walk_assignment_expression<'a, 'b>(node: tree_sitter::Node<'a>, container: &'
             kind: NodeKind::VARIABLE,
             inbound: RwLock::new(vec![]),
             outbound: RwLock::new(vec![]),
-            ts_node: Some(Arc::new(left)),
+            ts_node: Arc::new(left),
         });
 
         if !container.nodes_by_name.contains_key(&left_identifier) {
@@ -131,7 +131,7 @@ fn walk_local_variable_declaration<'a, 'b>(node: tree_sitter::Node<'a>, containe
             kind: NodeKind::VARIABLE,
             inbound: RwLock::new(vec![]),
             outbound: RwLock::new(vec![]),
-            ts_node: Some(Arc::new(left)),
+            ts_node: Arc::new(left),
         });
 
         if !container.nodes_by_name.contains_key(&left_identifier) {
@@ -200,7 +200,7 @@ fn walk_parameter_declaration<'a, 'b>(node: tree_sitter::Node<'a>, method_contai
             kind: NodeKind::PARAMETER,
             inbound: RwLock::new(vec![]),
             outbound: RwLock::new(vec![]),
-            ts_node: Some(Arc::new(name)),
+            ts_node: Arc::new(node),
         });
         method_container.nodes.push(param_node.clone());
         method_container.nodes_by_name.insert(parameter_name.clone(), param_node.clone());
