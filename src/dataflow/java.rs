@@ -51,10 +51,20 @@ pub fn get_identifiers_from_assignment<'a>(node: &tree_sitter::Node<'a>) -> Vec<
             let mut cursor = node.walk();
             let args = arguments.children(&mut cursor);
             for arg in args {
-                if arg.grammar_name() == "identifier" {
-                    res.push(arg);
-                }
+                res.extend(get_identifiers_from_assignment(&arg));
+
             }
+        }
+    }
+    if node.grammar_name() == "binary_expression" {
+        let left_opt = node.child_by_field_name("left");
+        let right_opt = node.child_by_field_name("right");
+
+        if let Some(left) = left_opt {
+            res.extend(get_identifiers_from_assignment(&left));
+        }
+        if let Some(right) = right_opt {
+            res.extend(get_identifiers_from_assignment(&right));
         }
     }
 
