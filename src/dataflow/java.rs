@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use tree_sitter;
 use tree_sitter::Tree;
 
-use crate::dataflow::common::get_code_for_node;
+use crate::dataflow::common::{get_code_for_node, get_nodes_of_type};
 use crate::dataflow::model::{Container, ContainerKind, DataFlow, Node, NodeKind};
 
 struct WalkContext<'a> {
@@ -151,10 +151,34 @@ fn walk_local_variable_declaration(node: &tree_sitter::Node, container: &mut Con
 fn walk_method_declaration_content(node: &tree_sitter::Node, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
     if node.grammar_name() == "assignment_expression" {
         walk_assignment_expression(node, container, dataflow, context);
+        return;
     }
 
     if node.grammar_name() == "local_variable_declaration" {
         walk_local_variable_declaration(node, container, dataflow, context);
+        return;
+    }
+
+    if node.grammar_name() == "method_invocation" {
+        let object_opt = node.child_by_field_name("object");
+        let arguments_opt = node.child_by_field_name("arguments");
+        if let Some(object) = object_opt {
+            if object.grammar_name() == "identifier" {
+                let object_name = get_code_for_node(&object, context.code);
+
+
+                if let Some(arguments) = arguments_opt {
+                    let identifiers = get_nodes_of_type(&arguments, "identifier");
+                    for id in identifiers {
+                        let arg_name = get_code_for_node(&id, context.code);
+                        add_flow(&arg_name, &object_name, container, dataflow, context);
+
+                    }
+                }
+            }
+        }
+
+        return;
     }
 
     let mut cursor = node.walk();

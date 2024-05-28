@@ -60,15 +60,13 @@ fn get_query_nodes<'tree>(tree: &'tree tree_sitter::Tree, query: &tree_sitter::Q
 }
 
 fn main() {
-    // let args = std::env::args().collect::<Vec<String>>();
-    // if args.len() != 2 {
-    //     eprintln!("Usage: {} <filename>", args[0]);
-    //     std::process::exit(1);
-    // }
-    //
-    // let filename = &args[1];
-    //
-    let filename = "testdata/sqli/Test1.java".to_string();
+    let args = std::env::args().collect::<Vec<String>>();
+    if args.len() != 2 {
+        eprintln!("Usage: {} <filename>", args[0]);
+        std::process::exit(1);
+    }
+
+    let filename = &args[1];
 
     // read filename into a string
     let source_code = std::fs::read_to_string(filename).expect("error while reading file");
