@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tree_sitter;
 use tree_sitter::Tree;
@@ -17,9 +17,17 @@ fn add_flow(source: &String, dest: &String, container: &mut Container, dataflow:
     let source_opt = container.nodes_by_name.get(source);
     let dest_opt = container.nodes_by_name.get(dest);
 
+    if source == dest {
+        return;
+    }
+
     if let (Some(source), Some(dest)) = (source_opt, dest_opt) {
-        // source.outbound.borrow_mut().push(dest.clone());
-        // dest.inbound.borrow_mut().push(source.clone());
+        {
+            source.outbound.write().unwrap().push(dest.clone());
+        }
+        {
+            dest.inbound.write().unwrap().push(source.clone());
+        }
     }
 }
 
@@ -68,8 +76,8 @@ fn walk_assignment_expression(node: &tree_sitter::Node, container: &mut Containe
         let mut variable_node = Arc::new(Node {
             name: Some(left_identifier.clone()),
             kind: NodeKind::VARIABLE,
-            inbound: vec![],
-            outbound: vec![],
+            inbound: RwLock::new(vec![]),
+            outbound: RwLock::new(vec![]),
             ts_node: None,
         });
 
@@ -111,8 +119,8 @@ fn walk_local_variable_declaration(node: &tree_sitter::Node, container: &mut Con
         let mut variable_node = Arc::new(Node {
             name: Some(left_identifier.clone()),
             kind: NodeKind::VARIABLE,
-            inbound: vec![],
-            outbound: vec![],
+            inbound: RwLock::new(vec![]),
+            outbound: RwLock::new(vec![]),
             ts_node: None,
         });
 
@@ -156,8 +164,8 @@ fn walk_parameter_declaration<'a, 'b>(node: &'a tree_sitter::Node, method_contai
         let mut param_node = Arc::new(Node {
             name: Some(parameter_name.clone()),
             kind: NodeKind::PARAMETER,
-            inbound: vec![],
-            outbound: vec![],
+            inbound: RwLock::new(vec![]),
+            outbound: RwLock::new(vec![]),
             ts_node: None,
         });
         method_container.nodes.push(param_node.clone());

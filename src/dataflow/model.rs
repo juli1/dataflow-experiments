@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tree_sitter;
 
@@ -47,8 +47,8 @@ pub enum NodeKind {
 pub struct Node<'a> {
     pub name: Option<String>,
     pub kind: NodeKind,
-    pub inbound: Vec<Arc<Node<'a>>>,
-    pub outbound: Vec<Arc<Node<'a>>>,
+    pub inbound: RwLock<Vec<Arc<Node<'a>>>>,
+    pub outbound: RwLock<Vec<Arc<Node<'a>>>>,
     pub ts_node: Option<Arc<tree_sitter::Node<'a>>>,
     // pub parent: Option<Arc<Container<'a>>>,
 }
@@ -59,12 +59,13 @@ impl Node<'_> {
         let name = self.name.clone().unwrap_or("<no name>".to_string());
         let indent = indent.unwrap_or(0);
         println!("{}[node] name={} kind={:?}", " ".repeat(indent), name, self.kind);
-        for o in &self.inbound {
-            println!("{} <- name={} kind={:?}", " ".repeat(indent + PRINT_INDENTATION), o.name.clone().unwrap_or("no name".to_string()), self.kind)
-        }
-        for o in &self.outbound {
+        &self.inbound.read().unwrap().iter().for_each(|i| {
+            println!("{} <- name={} kind={:?}", " ".repeat(indent + PRINT_INDENTATION), i.name.clone().unwrap_or("no name".to_string()), self.kind)
+        });
+        let outbound = &self.outbound.read().unwrap();
+        outbound.iter().for_each(|o| {
             println!("{} -> name={} kind={:?}", " ".repeat(indent + PRINT_INDENTATION), o.name.clone().unwrap_or("no name".to_string()), self.kind)
-        }
+        });
     }
 }
 
