@@ -56,6 +56,20 @@ pub fn get_identifiers_from_assignment(node: tree_sitter::Node) -> Vec<tree_sitt
             }
         }
     }
+
+    if node.grammar_name() == "object_creation_expression" {
+        let arguments_opt = node.child_by_field_name("arguments");
+        
+        if let Some(arguments) = arguments_opt {
+            let mut cursor = node.walk();
+            let args = arguments.children(&mut cursor);
+            for arg in args {
+                res.extend(get_identifiers_from_assignment(arg));
+
+            }
+        }
+    }
+
     if node.grammar_name() == "binary_expression" {
         let left_opt = node.child_by_field_name("left");
         let right_opt = node.child_by_field_name("right");
