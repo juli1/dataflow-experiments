@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use anyhow::Result;
 use derive_builder::Builder;
 use tree_sitter::{Node, Parser};
@@ -116,7 +116,7 @@ fn main() {
     let java_files = files_in_repository.iter().filter(|f| match_extension(f, vec!["java".to_string()]));
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_java::language()).expect("error while loading Java language");
-    let mut total_time_ns = 0;
+    let mut total_duration = Duration::new(0, 0);
     for f in java_files {
 
         // read filename into a string
@@ -129,8 +129,7 @@ fn main() {
 
             let now = Instant::now();
             build_graph(&tree, code_str);
-            let elapsed = now.elapsed().as_nanos();
-            total_time_ns = total_time_ns + elapsed;
+            total_duration = total_duration + now.elapsed();
         }
 
 
@@ -138,5 +137,5 @@ fn main() {
     }
 
 
-    println!("total time: {} ns", total_time_ns)
+    println!("total time: {} secs", total_duration.as_secs())
 }
