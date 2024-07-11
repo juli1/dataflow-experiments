@@ -112,11 +112,13 @@ fn main() {
         eprintln!("Usage: {} <filename>", args[0]);
         std::process::exit(1);
     }
+
     let files_in_repository = get_files(args[1].as_str()).expect("");
     let java_files: Vec<PathBuf> = files_in_repository.into_iter().filter(|f| match_extension(f, vec!["java".to_string()])).collect();
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_java::language()).expect("error while loading Java language");
     let mut total_duration = Duration::new(0, 0);
+    let start_time = Instant::now();
     for f in &java_files {
 
         // read filename into a string
@@ -136,7 +138,7 @@ fn main() {
 
     }
 
-
-    println!("total time: {} secs", total_duration.as_secs());
+    println!("total run time: {} secs", start_time.elapsed().as_secs());
+    println!("total time to build graph: {} secs", total_duration.as_secs());
     println!("number of files: {}", java_files.len());
 }
