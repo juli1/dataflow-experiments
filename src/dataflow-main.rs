@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::process::exit;
-
+use std::time::Instant;
 use anyhow::Result;
 use derive_builder::Builder;
 use tree_sitter::{Node, Parser};
-
+use walkdir::WalkDir;
 use crate::dataflow::java::build_graph;
 
 mod dataflow;
@@ -59,34 +60,83 @@ fn get_query_nodes<'tree>(tree: &'tree tree_sitter::Tree, query: &tree_sitter::Q
     return matches;
 }
 
+pub fn get_files(
+    directory: &str,
+) -> Result<Vec<PathBuf>> {
+    let mut files_to_return: Vec<PathBuf> = vec![];
+
+    // This is the directory that contains the .git files, we do not need to keep them.
+    let git_directory = format!("{}/.git", &directory);
+
+    let directories_to_walk: Vec<String> = vec![directory.to_string()];
+
+    for directory_to_walk in directories_to_walk {
+        for entry in WalkDir::new(directory_to_walk.as_str()) {
+            let dir_entry = entry?;
+            let entry = dir_entry.path();
+
+            // we only include if this is a file and not a symlink
+            // we should NEVER follow symlink for security reason (an attacker could then
+            // attempt to add a symlink outside the repo and read content outside of the
+            // repo with a custom rule.
+            let mut should_include = entry.is_file() && !entry.is_symlink();
+            let path_buf = entry.to_path_buf();
+
+
+            // do not include the git directory.
+            if entry.starts_with(git_directory.as_str()) {
+                should_include = false;
+            }
+
+            if should_include {
+                files_to_return.push(entry.to_path_buf());
+            }
+        }
+    }
+    Ok(files_to_return)
+}
+
+fn match_extension(path: &Path, extensions: Vec<String>) -> bool {
+    match path.extension() {
+        Some(ext) => match ext.to_str() {
+            Some(e) => extensions.contains(&e.to_string().to_lowercase()),
+            None => false,
+        },
+        None => false,
+    }
+}
+
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     if args.len() != 2 {
         eprintln!("Usage: {} <filename>", args[0]);
         std::process::exit(1);
     }
-
-    let filename = &args[1];
-
-    // read filename into a string
-    let source_code = std::fs::read_to_string(filename).expect("error while reading file");
-
-
+    let files_in_repository = get_files(args[1].as_str()).expect("");
+    let java_files = files_in_repository.iter().filter(|f| match_extension(f, vec!["java".to_string()]));
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_java::language()).expect("error while loading Java language");
-    let tree = parser.parse(&source_code, None).expect("error while parsing source code");
-    let code_str = source_code.as_str();
-    build_graph(&tree, code_str);
+    let mut total_time_ns = 0;
+    for f in java_files {
+
+        // read filename into a string
+        let source_code_res = std::fs::read_to_string(f);
+
+        if let Ok(source_code) = source_code_res {
+
+            let tree = parser.parse(&source_code, None).expect("error while parsing source code");
+            let code_str = source_code.as_str();
+
+            let now = Instant::now();
+            build_graph(&tree, code_str);
+            let elapsed = now.elapsed().as_nanos();
+            total_time_ns = total_time_ns + elapsed;
+        }
 
 
-    let source_query = get_query(SOURCE_QUERY, &tree_sitter_java::language()).expect("get source query");
-    let nodes = get_query_nodes(&tree, &source_query, code_str);
 
-    if nodes.len() == 0 {
-        println!("no node");
-        exit(1);
     }
 
-    let nodes_len = nodes.len();
-    println!("Found {} matches", nodes_len);
+
+    println!("total time: {} ns", total_time_ns)
 }

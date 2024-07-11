@@ -13,7 +13,7 @@ struct WalkContext<'a> {
 
 
 fn add_flow(source: &String, dest: &String, container: &mut Container, dataflow: &mut DataFlow, context: &WalkContext) {
-    println!("attempt adding flow from {} to {} in container {}", source, dest, container.name.clone().unwrap_or("no name".to_string()));
+    // println!("attempt adding flow from {} to {} in container {}", source, dest, container.name.clone().unwrap_or("no name".to_string()));
     let source_opt = container.nodes_by_name.get(source);
     let dest_opt = container.nodes_by_name.get(dest);
 
@@ -342,5 +342,5 @@ pub fn build_graph(tree: &Tree, code: &str) {
 
     walk_root(tree.root_node(), &mut container, &mut dataflow, &context);
     dataflow.containers.push(Arc::new(container));
-    dataflow.print_graph();
+    // dataflow.print_graph();
 }
